@@ -70,14 +70,17 @@ fn setup_board(mut commands: Commands ){
         .insert(Field {})
         .insert(Name::new("Brett"));
     //spawn a plattform which is the ground
-    commands.spawn(SpriteBundle{
+    commands.spawn(SpriteBundle {
         sprite: Sprite {
             color: Color::WHITE,
-            custom_size: Some(Vec2::new(1000.0, 20.0)),
+            custom_size: Some(Vec2::new(1600.0, 150.0)),
             ..default()
         },
         ..default()
-    }).insert(Structure {});
+    })
+    .insert(Structure {})
+    .insert(TransformBundle::from(Transform::from_xyz(0.0, -100.0, 0.0)));
+
 }
 
 fn move_player(
