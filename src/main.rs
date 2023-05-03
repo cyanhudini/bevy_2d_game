@@ -4,6 +4,7 @@ use bevy_rapier2d::prelude::*;
 
 pub const HEIGHT: f32 = 720.0;
 pub const WIDTH: f32 = 1280.0;
+pub const PLAYER_SPEED: f32 = 5.0;
 
 #[derive(Reflect, Component, Default)]
 #[reflect(Component)]
@@ -64,7 +65,8 @@ fn spawn_top_layer(
         material: materials.add(ColorMaterial::from(Color::PURPLE)),
         transform: Transform::from_translation(Vec3::new(-590., 0., 2.)),
         ..default()
-    });
+    })
+    .insert(Name::new("Ball"));
 }
 
 fn setup_board(mut commands: Commands ){
@@ -87,9 +89,25 @@ fn setup_board(mut commands: Commands ){
         },
         ..default()
     })
-    .insert(TransformBundle::from(Transform::from_xyz(0.0, -100.0, 0.0)));
+    .insert(TransformBundle::from(Transform::from_xyz(0.0, -100.0, 0.0)))
+    .insert(Name::new("Rect"));
 
 }
+
+// function to constrain the player to the screen
+fn constrain_player_to_screen(
+    mut commands: Commands,
+    mut query: Query<(&mut Player, &mut Transform)>,
+    ){
+        for(mut player, transform) in &mut query{
+            
+        }
+
+}
+
+fn despawn_bullets_on_hit(){}
+
+fn despawn_lifetime_bullets(){}
 
 fn move_player(
     mut commands: Commands,
@@ -97,21 +115,30 @@ fn move_player(
     mut query: Query<(Entity, &mut Player, &mut Transform)>,
     timer: Res<Time>,
     ){
-    for (player_entity,mut player, mut transform) in query.iter_mut(){
+    for (_,mut player, mut transform) in query.iter_mut(){
+        let mut direction = Vec3::ZERO;
+
         if keyboard_input.pressed(KeyCode::W){
-            transform.translation.y += 1.0;
+            direction += Vec3::new(0.0, 1.0, 0.0);
         }
         if keyboard_input.pressed(KeyCode::S){
-            transform.translation.y -= 1.0;
+            direction += Vec3::new(0.0, -1.0, 0.0);
         }
         if keyboard_input.pressed(KeyCode::A){
-            transform.translation.x -= 5.0;
+            direction += Vec3::new(-1.0, 0.0, 0.0);
         }
         if keyboard_input.pressed(KeyCode::D){
-            transform.translation.x += 5.0;
+            direction += Vec3::new(1.0, 0.0, 0.0);  
         }
         //if the player presses space, the player shoots/spawns a bullet
-        
+        if direction.length() >0.0 {
+            //normalize the direction vector
+            direction = direction.normalize();
+            //move the player in the direction
+            transform.translation.x += direction.x * 5.0;
+            transform.translation.y += direction.y * 5.0; 
+        }
+        transform.translation +=  direction * PLAYER_SPEED * timer.delta_seconds();
         if keyboard_input.pressed(KeyCode::Space){
             //also check if cooldown is over to spawn a bullet
             player.shooting_cooldown.tick(timer.delta());
@@ -124,7 +151,7 @@ fn move_player(
                     },
                     ..default()
                 },
-                //spawn bullets which dont collide with the player
+
                 
                 Velocity::zero(),
                 Collider::cuboid(2.0, 2.0)
@@ -139,18 +166,6 @@ fn move_player(
 }
 //spawn a bullet and move it in the direction the player was moving when spawned
 
-fn bullet_despawn(
-    mut commands: Commands,
-    mut bullets: Query<(Entity, &mut Lifetime)>,
-    time : Res<Time>
-    ){
-    for(entity, mut lifetime) in &mut bullets {
-        lifetime.timer.tick(time.delta());
-        if lifetime.timer.just_finished(){
-            commands.entity(entity).despawn_recursive();
-        }
-    }
-}
 
 fn move_bullets(
     mut commands: Commands,
@@ -165,15 +180,17 @@ fn move_bullets(
 
 fn setup_physics(mut commands: Commands){
         commands
-        .spawn(Collider::cuboid(1000.0, 50.0))
-        .insert(TransformBundle::from(Transform::from_xyz(0.0, -100.0, 0.0)));
+        .spawn(Collider::cuboid(WIDTH, 50.0))
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, -HEIGHT / 2.0 , 0.0)))
+        .insert(Name::new("Plattform"));
 
-    /* Create the bouncing ball. */
+
     commands
         .spawn(RigidBody::Dynamic)
         .insert(Collider::cuboid(20.0, 20.0))
         .insert(Restitution::coefficient(0.7))
-        .insert(TransformBundle::from(Transform::from_xyz(0.0, 400.0, 0.0)));
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, 400.0, 0.0)))
+        .insert(Name::new("Collider Quadrat"));
     commands
         .spawn(Collider::cuboid(10.0, 60.0))
         .insert(TransformBundle::from(Transform::from_xyz(-200.0, -100.0, 0.0)))
@@ -204,6 +221,5 @@ fn main() {
         .add_startup_system(setup_physics)
         .add_system(move_player)
         .add_system(move_bullets)
-        .add_system(bullet_despawn)
         .run();
 }
